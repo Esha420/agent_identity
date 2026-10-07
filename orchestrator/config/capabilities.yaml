@@ -1,0 +1,35 @@
+# Orchestrator capability mapping
+# Maps required capabilities and task intents to agent catalog identifiers
+
+capabilities:
+  browser:
+    agent: "browser-agent"
+    description: "Web browsing, HTML parsing, and DOM title extraction"
+    keywords:
+      - "visit"
+      - "browse"
+      - "website"
+      - "url"
+      - "domain"
+      - "web"
+      - "html"
+
+  research:
+    agent: "research-agent"
+    description: "Autonomous topic research and intel gathering"
+    keywords:
+      - "research"
+      - "intel"
+      - "investigate"
+      - "analysis"
+      - "gather"
+      - "topic"
+
+  restricted:
+    agent: "restricted-agent"
+    description: "Restricted administrative operations"
+    keywords:
+      - "restricted"
+      - "privileged"
+      - "override"
+      - "secret"

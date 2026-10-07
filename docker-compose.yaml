@@ -1,0 +1,26 @@
+services:
+  cerbos:
+    image: ghcr.io/cerbos/cerbos:latest
+    container_name: cerbos-pdp
+    restart: unless-stopped
+    ports:
+      - "3592:3592"
+      - "3593:3593"
+    volumes:
+      - ./cerbos/cerbos.yaml:/cerbos.yaml:ro
+      - ./cerbos/policies:/policies:ro
+    command: ["server", "--config=/cerbos.yaml"]
+    healthcheck:
+      test: ["CMD", "cerbos", "healthcheck", "--server=http://localhost:3592"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  mock-target:
+    image: python:3.11-alpine
+    container_name: mock-target
+    restart: unless-stopped
+    ports:
+      - "8089:8089"
+    command: >
+      sh -c "mkdir -p /www && echo '<!DOCTYPE html><html><head><title>Example Domain</title></head><body><h1>Example Domain</h1><p>Test page for browser agent verification.</p></body></html>' > /www/index.html && python3 -m http.server 8089 --directory /www"

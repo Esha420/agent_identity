@@ -1,0 +1,90 @@
+---
+name: AgentExecutionTestSuite
+description: Verification tests for agent execution policies
+principals:
+  orchestrator:
+    id: orchestrator-agent
+    roles:
+      - orchestrator
+  untrusted:
+    id: untrusted-agent
+    roles:
+      - untrusted
+resources:
+  browser:
+    id: browser-agent
+    kind: agent
+  research:
+    id: research-agent
+    kind: agent
+  restricted:
+    id: restricted-agent
+    kind: agent
+tests:
+  - name: OrchestratorApprovedAgents
+    input:
+      principals:
+        - orchestrator
+      resources:
+        - browser
+        - research
+      actions:
+        - execute
+    expected:
+      - principal: orchestrator
+        resource: browser
+        actions:
+          execute: EFFECT_ALLOW
+      - principal: orchestrator
+        resource: research
+        actions:
+          execute: EFFECT_ALLOW
+
+  - name: OrchestratorRestrictedAgent
+    input:
+      principals:
+        - orchestrator
+      resources:
+        - restricted
+      actions:
+        - execute
+    expected:
+      - principal: orchestrator
+        resource: restricted
+        actions:
+          execute: EFFECT_DENY
+
+  - name: UntrustedPrincipalExecution
+    input:
+      principals:
+        - untrusted
+      resources:
+        - browser
+        - research
+      actions:
+        - execute
+    expected:
+      - principal: untrusted
+        resource: browser
+        actions:
+          execute: EFFECT_DENY
+      - principal: untrusted
+        resource: research
+        actions:
+          execute: EFFECT_DENY
+
+  - name: UnauthorizedActions
+    input:
+      principals:
+        - orchestrator
+      resources:
+        - browser
+      actions:
+        - admin
+        - delete
+    expected:
+      - principal: orchestrator
+        resource: browser
+        actions:
+          admin: EFFECT_DENY
+          delete: EFFECT_DENY

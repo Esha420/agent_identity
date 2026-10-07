@@ -1,0 +1,25 @@
+---
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  version: "default"
+  resource: "agent"
+  rules:
+    - actions: ["execute"]
+      effect: EFFECT_ALLOW
+      roles:
+        - orchestrator
+      condition:
+        match:
+          expr: request.resource.id in ["browser-agent", "research-agent"]
+
+    - actions: ["execute"]
+      effect: EFFECT_DENY
+      roles:
+        - orchestrator
+      condition:
+        match:
+          expr: request.resource.id == "restricted-agent"
+
+    - actions: ["admin", "delete"]
+      effect: EFFECT_DENY
+      roles: ["*"]
