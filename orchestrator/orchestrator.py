@@ -7,6 +7,9 @@ import sys
 from typing import Any, Dict, Optional
 import yaml
 
+# Automatically include project root in sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from ax.adapter import AXAdmissionAdapter
 
 DEFAULT_CAPABILITIES_PATH = os.path.join(

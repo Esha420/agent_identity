@@ -11,7 +11,7 @@ services:
       - ./cerbos/policies:/policies:ro
     command: ["server", "--config=/cerbos.yaml"]
     healthcheck:
-      test: ["CMD", "cerbos", "healthcheck", "--server=http://localhost:3592"]
+      test: ["CMD", "/cerbos", "healthcheck", "--config=/cerbos.yaml"]
       interval: 5s
       timeout: 3s
       retries: 5

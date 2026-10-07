@@ -4,11 +4,15 @@
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import time
 import uuid
 from typing import Any, Dict, Optional, Tuple
 import yaml
+
+# Automatically include project root in sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from ax.cerbos_client import CerbosClient
 
