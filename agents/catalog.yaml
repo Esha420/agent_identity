@@ -1,9 +1,10 @@
 # Declarative Agent Catalog
-# Defines external agent images, capabilities, and execution parameters
+# Defines external agent images, capabilities, execution parameters, and tool capability gates
 
 agents:
   browser-agent:
     name: "browser-agent"
+    role: "browser-worker"
     description: "Upstream Browser Automation Agent navigating web pages and extracting structured DOM content"
     source:
       repository: "https://github.com/EmergenceAI/Agent-E"
@@ -21,9 +22,15 @@ agents:
       - "browser"
       - "web"
       - "dom-extraction"
+    allowed_tools:
+      - "fetch_url"
+      - "browser_navigate"
+      - "filesystem_read"
+      - "filesystem_write"
 
   research-agent:
     name: "research-agent"
+    role: "research-worker"
     description: "Upstream OpenClaw Autonomous Research Agent executing research tooling pipeline"
     source:
       repository: "https://github.com/openclaw/openclaw"
@@ -39,9 +46,14 @@ agents:
       - "research"
       - "analysis"
       - "intel-gathering"
+    allowed_tools:
+      - "fetch_url"
+      - "filesystem_read"
+      - "filesystem_write"
 
   restricted-agent:
     name: "restricted-agent"
+    role: "restricted-worker"
     description: "Sensitive/Restricted Internal Agent requiring explicit administrative policy authorization"
     source:
       repository: "internal/restricted"
@@ -55,3 +67,4 @@ agents:
     capabilities:
       - "privileged-access"
       - "security-override"
+    allowed_tools: []

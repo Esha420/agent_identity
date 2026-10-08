@@ -1,0 +1,85 @@
+# Authoritative Declarative Tool Catalog
+# Versioned source of tool capabilities, actions, side-effects, and profile constraints
+
+tools:
+  fetch_url:
+    name: "fetch_url"
+    kind: "network"
+    action: "request"
+    description: "Issue structured HTTP GET requests to approved endpoints"
+    side_effect: "read-only"
+    profiles:
+      test:
+        allowed_schemes:
+          - "http"
+          - "https"
+        allowed_hosts:
+          - "mock-target"
+          - "localhost"
+          - "127.0.0.1"
+        allowed_ports:
+          - 8089
+        allowed_methods:
+          - "GET"
+        allow_private_ips: true
+      production:
+        allowed_schemes:
+          - "https"
+        allowed_hosts:
+          - "example.com"
+          - "docs.example.com"
+        allowed_ports:
+          - 443
+        allowed_methods:
+          - "GET"
+        allow_private_ips: false
+
+  browser_navigate:
+    name: "browser_navigate"
+    kind: "browser"
+    action: "navigate"
+    description: "Navigate browser session to an approved domain"
+    side_effect: "read-only"
+    profiles:
+      test:
+        allowed_schemes:
+          - "http"
+          - "https"
+        allowed_hosts:
+          - "mock-target"
+          - "localhost"
+          - "127.0.0.1"
+        allowed_ports:
+          - 8089
+        allow_private_ips: true
+      production:
+        allowed_schemes:
+          - "https"
+        allowed_hosts:
+          - "example.com"
+          - "docs.example.com"
+        allowed_ports:
+          - 443
+        allow_private_ips: false
+
+  filesystem_read:
+    name: "filesystem_read"
+    kind: "filesystem"
+    action: "read"
+    description: "Read task input or output artifacts from isolated workspace"
+    side_effect: "read-only"
+    allowed_path_roots:
+      - "/workspace/input"
+      - "/workspace/output"
+      - "./workspace/input"
+      - "./workspace/output"
+
+  filesystem_write:
+    name: "filesystem_write"
+    kind: "filesystem"
+    action: "write"
+    description: "Write task output artifacts to isolated workspace output directory"
+    side_effect: "mutating"
+    allowed_path_roots:
+      - "/workspace/output"
+      - "./workspace/output"

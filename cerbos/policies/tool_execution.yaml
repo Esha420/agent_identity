@@ -1,0 +1,86 @@
+---
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  version: "default"
+  resource: "tool"
+  rules:
+    # 1. ALLOW HTTP Request for approved tools, methods, hosts, and verified valid IPs
+    - actions: ["request"]
+      effect: EFFECT_ALLOW
+      roles:
+        - browser-worker
+        - research-worker
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.resource.id == "fetch_url"
+              - expr: request.resource.attr.task_id == request.principal.attr.task_id
+              - expr: request.resource.attr.tenant_id == request.principal.attr.tenant_id
+              - expr: request.resource.attr.delegated_by == request.principal.attr.delegated_by
+              - expr: request.principal.attr.tenant_id in ["tenant-demo"]
+              - expr: "request.principal.attr.delegated_by in ['user-123', 'user-admin'] || request.principal.attr.delegated_by.startsWith('auth0|')"
+              - expr: "has(request.principal.attr.delegation_permissions) && size(request.principal.attr.delegation_permissions) > 0 ? ('browser:read' in request.principal.attr.delegation_permissions || 'network:read' in request.principal.attr.delegation_permissions) : true"
+              - expr: request.resource.attr.method in request.resource.attr.allowed_methods
+              - expr: request.resource.attr.host in request.resource.attr.allowed_hosts
+              - expr: request.resource.attr.scheme in request.resource.attr.allowed_schemes
+              - expr: request.resource.attr.port in request.resource.attr.allowed_ports
+              - expr: request.resource.attr.ip_valid == true
+
+    # 2. ALLOW Browser Navigation for approved domains
+    - actions: ["navigate"]
+      effect: EFFECT_ALLOW
+      roles:
+        - browser-worker
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.resource.id == "browser_navigate"
+              - expr: request.resource.attr.task_id == request.principal.attr.task_id
+              - expr: request.resource.attr.tenant_id == request.principal.attr.tenant_id
+              - expr: request.resource.attr.delegated_by == request.principal.attr.delegated_by
+              - expr: request.principal.attr.tenant_id in ["tenant-demo"]
+              - expr: "request.principal.attr.delegated_by in ['user-123', 'user-admin'] || request.principal.attr.delegated_by.startsWith('auth0|')"
+              - expr: "has(request.principal.attr.delegation_permissions) && size(request.principal.attr.delegation_permissions) > 0 ? 'browser:read' in request.principal.attr.delegation_permissions : true"
+              - expr: request.resource.attr.host in request.resource.attr.allowed_hosts
+              - expr: request.resource.attr.scheme in request.resource.attr.allowed_schemes
+              - expr: request.resource.attr.ip_valid == true
+
+    # 3. ALLOW Filesystem Read for contained input/output paths
+    - actions: ["read"]
+      effect: EFFECT_ALLOW
+      roles:
+        - browser-worker
+        - research-worker
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.resource.id == "filesystem_read"
+              - expr: request.resource.attr.task_id == request.principal.attr.task_id
+              - expr: request.resource.attr.tenant_id == request.principal.attr.tenant_id
+              - expr: request.resource.attr.delegated_by == request.principal.attr.delegated_by
+              - expr: request.principal.attr.tenant_id in ["tenant-demo"]
+              - expr: "request.principal.attr.delegated_by in ['user-123', 'user-admin'] || request.principal.attr.delegated_by.startsWith('auth0|')"
+              - expr: "has(request.principal.attr.delegation_permissions) && size(request.principal.attr.delegation_permissions) > 0 ? 'filesystem:read' in request.principal.attr.delegation_permissions : true"
+              - expr: request.resource.attr.path_contained == true
+
+    # 4. ALLOW Filesystem Write for contained output paths
+    - actions: ["write"]
+      effect: EFFECT_ALLOW
+      roles:
+        - browser-worker
+        - research-worker
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.resource.id == "filesystem_write"
+              - expr: request.resource.attr.task_id == request.principal.attr.task_id
+              - expr: request.resource.attr.tenant_id == request.principal.attr.tenant_id
+              - expr: request.resource.attr.delegated_by == request.principal.attr.delegated_by
+              - expr: request.principal.attr.tenant_id in ["tenant-demo"]
+              - expr: "request.principal.attr.delegated_by in ['user-123', 'user-admin'] || request.principal.attr.delegated_by.startsWith('auth0|')"
+              - expr: "has(request.principal.attr.delegation_permissions) && size(request.principal.attr.delegation_permissions) > 0 ? 'filesystem:write' in request.principal.attr.delegation_permissions : true"
+              - expr: request.resource.attr.path_contained == true

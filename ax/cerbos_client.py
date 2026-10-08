@@ -4,7 +4,7 @@ import json
 import os
 import urllib.error
 import urllib.request
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 DEFAULT_CERBOS_URL = os.getenv("CERBOS_HTTP_URL", "http://localhost:3592")
 
@@ -39,6 +39,8 @@ class CerbosClient:
         resource_kind: str = "agent",
         action: str = "execute",
         context: Dict[str, Any] = None,
+        principal_attr: Optional[Dict[str, Any]] = None,
+        resource_attr: Optional[Dict[str, Any]] = None,
     ) -> Tuple[bool, str, Dict[str, Any]]:
         """
         Evaluate authorization for a given principal, resource, and action.
@@ -48,22 +50,22 @@ class CerbosClient:
             Guaranteed FAIL-CLOSED on error or timeout.
         """
         context = context or {}
+        p_attr = principal_attr if principal_attr is not None else context
+        r_attr = resource_attr if resource_attr is not None else {"name": resource_id, **context}
+
         payload = {
             "requestId": request_id,
             "principal": {
                 "id": principal_id,
                 "roles": roles,
-                "attr": context,
+                "attr": p_attr,
             },
             "resources": [
                 {
                     "resource": {
                         "id": resource_id,
                         "kind": resource_kind,
-                        "attr": {
-                            "name": resource_id,
-                            **context,
-                        },
+                        "attr": r_attr,
                     },
                     "actions": [action],
                 }

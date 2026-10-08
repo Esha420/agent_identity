@@ -6,10 +6,15 @@ principals:
     id: orchestrator-agent
     roles:
       - orchestrator
+    attr:
+      tenant_id: tenant-demo
   untrusted:
     id: untrusted-agent
     roles:
       - untrusted
+    attr:
+      tenant_id: tenant-demo
+
 resources:
   browser:
     id: browser-agent
@@ -20,6 +25,38 @@ resources:
   restricted:
     id: restricted-agent
     kind: agent
+  browser_valid_auth0_user:
+    id: browser-agent
+    kind: agent
+    attr:
+      tenant_id: tenant-demo
+      user:
+        id: "auth0|user-123"
+        tenant_id: tenant-demo
+        permissions:
+          - agent:execute
+          - browser:read
+  browser_missing_execute_perm:
+    id: browser-agent
+    kind: agent
+    attr:
+      tenant_id: tenant-demo
+      user:
+        id: "auth0|user-123"
+        tenant_id: tenant-demo
+        permissions:
+          - browser:read
+  browser_wrong_tenant_user:
+    id: browser-agent
+    kind: agent
+    attr:
+      tenant_id: tenant-demo
+      user:
+        id: "auth0|user-123"
+        tenant_id: tenant-other
+        permissions:
+          - agent:execute
+
 tests:
   - name: OrchestratorApprovedAgents
     input:
@@ -88,3 +125,45 @@ tests:
         actions:
           admin: EFFECT_DENY
           delete: EFFECT_DENY
+
+  - name: Auth0UserDelegationValid
+    input:
+      principals:
+        - orchestrator
+      resources:
+        - browser_valid_auth0_user
+      actions:
+        - execute
+    expected:
+      - principal: orchestrator
+        resource: browser_valid_auth0_user
+        actions:
+          execute: EFFECT_ALLOW
+
+  - name: Auth0UserDelegationMissingPermission
+    input:
+      principals:
+        - orchestrator
+      resources:
+        - browser_missing_execute_perm
+      actions:
+        - execute
+    expected:
+      - principal: orchestrator
+        resource: browser_missing_execute_perm
+        actions:
+          execute: EFFECT_DENY
+
+  - name: Auth0UserDelegationWrongTenant
+    input:
+      principals:
+        - orchestrator
+      resources:
+        - browser_wrong_tenant_user
+      actions:
+        - execute
+    expected:
+      - principal: orchestrator
+        resource: browser_wrong_tenant_user
+        actions:
+          execute: EFFECT_DENY
