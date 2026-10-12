@@ -19,7 +19,9 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
+import threading
 import time
 from typing import Any, Dict, Optional, Tuple
 import uuid
@@ -402,7 +404,52 @@ def handle_socket_mode():
 
     client.socket_mode_request_listeners.append(process)
     client.connect()
-    print(f"[+] Socket Mode listener connected and listening on channel {DEFAULT_CHANNEL}. Press Ctrl+C to stop.")
+    print(f"[+] Socket Mode listener connected on channel {DEFAULT_CHANNEL}.")
+
+    # Continuous Channel Monitor: Ensures operator messages sent in Slack are processed
+    # in real-time, even if Event Subscriptions aren't routing message.channels through Socket Mode.
+    processed_messages = set()
+
+    def live_channel_poller():
+        bot_user = None
+        try:
+            auth_info = gateway.web_client.auth_test()
+            bot_user = auth_info.get("user_id")
+        except Exception as e:
+            print(f"[-] Warning during auth_test: {e}")
+
+        print(f"[+] Live channel poller active on {DEFAULT_CHANNEL} (Bot ID: {bot_user})")
+
+        while True:
+            try:
+                time.sleep(2)
+                res = gateway.web_client.conversations_history(channel=DEFAULT_CHANNEL, limit=8)
+                msgs = res.get("messages", [])
+                for m in reversed(msgs):
+                    ts = m.get("ts")
+                    if not ts or ts in processed_messages:
+                        continue
+                    processed_messages.add(ts)
+
+                    # Ignore bot messages or membership join events
+                    if m.get("bot_id") or m.get("user") == bot_user or m.get("subtype"):
+                        continue
+
+                    text = m.get("text", "").strip()
+                    user = m.get("user", "U_UNKNOWN")
+                    thread_ts = m.get("thread_ts") or ts
+                    clean_text = re.sub(r"<@[A-Z0-9]+>", "", text).strip()
+                    if clean_text:
+                        print(f"[+] [Live Channel Monitor] Operator prompt from {user} in {DEFAULT_CHANNEL}: '{clean_text}'")
+                        gateway.dispatch_slack_intent(DEFAULT_CHANNEL, thread_ts, user, clean_text)
+            except Exception as e:
+                print(f"[-] Live channel poller error: {e}")
+                time.sleep(3)
+
+    poller_thread = threading.Thread(target=live_channel_poller, daemon=True)
+    poller_thread.start()
+
+    print(f"[+] Governed Slack Service fully listening (Socket Mode + Channel Poller). Press Ctrl+C to stop.")
     try:
         while True:
             time.sleep(1)
