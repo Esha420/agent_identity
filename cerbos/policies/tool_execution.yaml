@@ -53,6 +53,8 @@ resourcePolicy:
       roles:
         - browser-worker
         - research-worker
+        - monitoring-worker
+        - document-worker
       condition:
         match:
           all:
@@ -65,6 +67,8 @@ resourcePolicy:
               - expr: "request.principal.attr.delegated_by in ['user-123', 'user-admin'] || request.principal.attr.delegated_by.startsWith('auth0|')"
               - expr: "request.principal.attr.delegated_by.startsWith('auth0|') ? (has(request.principal.attr.delegation_permissions) && 'filesystem:read' in request.principal.attr.delegation_permissions) : (has(request.principal.attr.delegation_permissions) ? 'filesystem:read' in request.principal.attr.delegation_permissions : true)"
               - expr: request.resource.attr.path_contained == true
+              - expr: "'monitoring-worker' in request.principal.roles ? (request.resource.attr.canonical_path.contains('sample_staging.log') || request.resource.attr.canonical_path.contains('/workspace/logs')) : true"
+              - expr: "'document-worker' in request.principal.roles ? (request.resource.attr.canonical_path.contains('/workspace/output') || request.resource.attr.canonical_path.contains('findings')) : true"
 
     # 4. ALLOW Filesystem Write for contained output paths
     - actions: ["write"]
@@ -72,6 +76,7 @@ resourcePolicy:
       roles:
         - browser-worker
         - research-worker
+        - document-worker
       condition:
         match:
           all:
@@ -84,3 +89,5 @@ resourcePolicy:
               - expr: "request.principal.attr.delegated_by in ['user-123', 'user-admin'] || request.principal.attr.delegated_by.startsWith('auth0|')"
               - expr: "request.principal.attr.delegated_by.startsWith('auth0|') ? (has(request.principal.attr.delegation_permissions) && 'filesystem:write' in request.principal.attr.delegation_permissions) : (has(request.principal.attr.delegation_permissions) ? 'filesystem:write' in request.principal.attr.delegation_permissions : true)"
               - expr: request.resource.attr.path_contained == true
+              - expr: "'document-worker' in request.principal.roles ? (request.resource.attr.canonical_path.endsWith('incident_report.md') || request.resource.attr.canonical_path.endsWith('report.md') || request.resource.attr.canonical_path.endsWith('findings_summary.json')) : true"
+

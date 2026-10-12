@@ -40,6 +40,7 @@ class TaskExecutionContext:
     issued_at: int = field(default_factory=lambda: int(time.time()))
     expires_at: int = field(default_factory=lambda: int(time.time()) + 3600)
     context_id: str = field(default_factory=lambda: f"ctx-{uuid.uuid4().hex[:12]}")
+    correlation_id: str = ""
     signature: str = ""
 
     def __post_init__(self):
@@ -72,6 +73,7 @@ class TaskExecutionContext:
             "issued_at": self.issued_at,
             "expires_at": self.expires_at,
             "context_id": self.context_id,
+            "correlation_id": self.correlation_id,
         }
         return json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
@@ -124,6 +126,7 @@ class TaskExecutionContext:
             "roles": list(self.roles),
             "attr": {
                 "task_id": self.task_id,
+                "correlation_id": self.correlation_id,
                 "tenant_id": self.tenant_id,
                 "parent_principal": self.parent_principal,
                 "delegated_by": self.delegated_by,
@@ -157,6 +160,7 @@ class ToolInvocationRequest:
     arguments: Dict[str, Any] = field(default_factory=dict)
     claimed_task_id: Optional[str] = None
     claimed_agent_id: Optional[str] = None
+    correlation_id: Optional[str] = None
 
 
 @dataclass
@@ -189,6 +193,7 @@ class AuditEvent:
     """Operator-facing audit log entry recorded for every tool evaluation."""
     timestamp: float = field(default_factory=time.time)
     request_id: str = ""
+    correlation_id: str = ""
     task_id: str = ""
     agent_id: str = ""
     tenant_id: str = ""
@@ -205,6 +210,7 @@ class AuditEvent:
         return {
             "timestamp": self.timestamp,
             "request_id": self.request_id,
+            "correlation_id": self.correlation_id,
             "task_id": self.task_id,
             "agent_id": self.agent_id,
             "tenant_id": self.tenant_id,

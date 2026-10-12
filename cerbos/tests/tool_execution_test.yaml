@@ -38,6 +38,31 @@ principals:
       parent_principal: orchestrator-agent
       delegated_by: user-123
 
+  monitoring_worker:
+    id: log-analysis-agent
+    roles:
+      - monitoring-worker
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      parent_principal: orchestrator-agent
+      delegated_by: user-123
+      delegation_permissions:
+        - filesystem:read
+
+  document_worker:
+    id: incident-reporting-agent
+    roles:
+      - document-worker
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      parent_principal: orchestrator-agent
+      delegated_by: user-123
+      delegation_permissions:
+        - filesystem:read
+        - filesystem:write
+
 resources:
   fetch_url_valid:
     id: fetch_url
@@ -184,6 +209,56 @@ resources:
       port: 443
       ip_valid: true
 
+  log_file_resource:
+    id: filesystem_read
+    kind: tool
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      delegated_by: user-123
+      path_contained: true
+      canonical_path: /workspace/logs/sample_staging.log
+
+  log_write_resource:
+    id: filesystem_write
+    kind: tool
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      delegated_by: user-123
+      path_contained: true
+      canonical_path: /workspace/logs/sample_staging.log
+
+  findings_resource:
+    id: filesystem_read
+    kind: tool
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      delegated_by: user-123
+      path_contained: true
+      canonical_path: /workspace/output/findings_incident.json
+
+  incident_report_resource:
+    id: filesystem_write
+    kind: tool
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      delegated_by: user-123
+      path_contained: true
+      canonical_path: /workspace/output/incident_report.md
+
+  unauthorized_write_resource:
+    id: filesystem_write
+    kind: tool
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      delegated_by: user-123
+      path_contained: true
+      canonical_path: /workspace/output/malicious_payload.sh
+
 tests:
   - name: ValidFetchUrlAllowed
     input:
@@ -324,4 +399,88 @@ tests:
         resource: fetch_url_valid
         actions:
           request: EFFECT_DENY
+
+  - name: MonitoringWorkerLogReadAllowed
+    input:
+      principals:
+        - monitoring_worker
+      resources:
+        - log_file_resource
+      actions:
+        - read
+    expected:
+      - principal: monitoring_worker
+        resource: log_file_resource
+        actions:
+          read: EFFECT_ALLOW
+
+  - name: MonitoringWorkerLogWriteDenied
+    input:
+      principals:
+        - monitoring_worker
+      resources:
+        - log_write_resource
+      actions:
+        - write
+    expected:
+      - principal: monitoring_worker
+        resource: log_write_resource
+        actions:
+          write: EFFECT_DENY
+
+  - name: DocumentWorkerFindingsReadAllowed
+    input:
+      principals:
+        - document_worker
+      resources:
+        - findings_resource
+      actions:
+        - read
+    expected:
+      - principal: document_worker
+        resource: findings_resource
+        actions:
+          read: EFFECT_ALLOW
+
+  - name: DocumentWorkerLogReadDenied
+    input:
+      principals:
+        - document_worker
+      resources:
+        - log_file_resource
+      actions:
+        - read
+    expected:
+      - principal: document_worker
+        resource: log_file_resource
+        actions:
+          read: EFFECT_DENY
+
+  - name: DocumentWorkerReportWriteAllowed
+    input:
+      principals:
+        - document_worker
+      resources:
+        - incident_report_resource
+      actions:
+        - write
+    expected:
+      - principal: document_worker
+        resource: incident_report_resource
+        actions:
+          write: EFFECT_ALLOW
+
+  - name: DocumentWorkerArbitraryWriteDenied
+    input:
+      principals:
+        - document_worker
+      resources:
+        - unauthorized_write_resource
+      actions:
+        - write
+    expected:
+      - principal: document_worker
+        resource: unauthorized_write_resource
+        actions:
+          write: EFFECT_DENY
 

@@ -6,5 +6,6 @@ __pycache__/
 env/
 venv/
 *.log
+*.pid
 .DS_Store
 workspace/

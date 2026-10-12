@@ -10,7 +10,7 @@ echo "[Step 1/3] Compiling Cerbos policies and running PDP unit tests..."
 docker run --rm \
   -v "$(pwd)/cerbos/policies:/policies:ro" \
   -v "$(pwd)/cerbos/tests:/tests:ro" \
-  ghcr.io/cerbos/cerbos:latest compile --tests=/tests /policies
+  ghcr.io/cerbos/cerbos:0.56.0@sha256:540643bc67ba628011a150ad1d3370f285daa38995be5cd7a4be181da902bec1 compile --tests=/tests /policies
 
 # 2. Run Python Core Authorization & Tool Gateway Security Suites
 echo "[Step 2/3] Running Layer 1 Admission & Layer 2 Tool Gateway test suites..."

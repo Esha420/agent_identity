@@ -24,11 +24,23 @@ from tools.schema import (
     ToolInvocationResponse,
 )
 from tools.security import (
+    HOST_RESOLVER_MAPPINGS,
     SecurityValidationError,
     normalize_and_validate_path,
     normalize_and_validate_url,
     validate_task_context,
 )
+
+import socket
+_ORIG_GETADDRINFO = socket.getaddrinfo
+
+def _governed_getaddrinfo(host, port, *args, **kwargs):
+    resolved_host = HOST_RESOLVER_MAPPINGS.get(host, host)
+    return _ORIG_GETADDRINFO(resolved_host, port, *args, **kwargs)
+
+if not getattr(socket, "_governed_resolver_installed", False):
+    socket.getaddrinfo = _governed_getaddrinfo
+    socket._governed_resolver_installed = True
 
 DEFAULT_TOOLS_CATALOG_PATH = os.path.join(os.path.dirname(__file__), "catalog.yaml")
 DEFAULT_AGENTS_CATALOG_PATH = os.path.join(os.path.dirname(__file__), "../agents/catalog.yaml")
@@ -134,6 +146,8 @@ class ToolGatewayPEP:
             return data.get("agents", {})
 
     def record_audit(self, event: AuditEvent):
+        if not event.correlation_id and getattr(self, "_current_correlation_id", None):
+            event.correlation_id = self._current_correlation_id
         self.audit_logs.append(event)
         if self.audit_sink:
             self.audit_sink(event)
@@ -148,11 +162,16 @@ class ToolGatewayPEP:
         mutations will take place.
         """
         req_id = req.request_id or f"tool-req-{uuid.uuid4().hex[:8]}"
+        self._current_correlation_id = req.correlation_id
+        if not self._current_correlation_id and isinstance(req.task_context, TaskExecutionContext):
+            self._current_correlation_id = req.task_context.correlation_id
 
         # Unpack token if passed as serialized string
         if isinstance(req.task_context, str):
             try:
                 ctx = TaskExecutionContext.from_token(req.task_context)
+                if not self._current_correlation_id and getattr(ctx, "correlation_id", ""):
+                    self._current_correlation_id = ctx.correlation_id
             except Exception as e:
                 event = AuditEvent(
                     request_id=req_id,
@@ -472,6 +491,7 @@ class ToolGatewayPEP:
         # -------------------------------------------------------------
         resource_attr = {
             "task_id": ctx.task_id,
+            "correlation_id": getattr(self, "_current_correlation_id", "") or "",
             "tenant_id": ctx.tenant_id,
             "delegated_by": ctx.delegated_by,
             "delegation_issuer": getattr(ctx, "delegation_issuer", "https://your-tenant.us.auth0.com/"),
@@ -499,6 +519,7 @@ class ToolGatewayPEP:
 
         principal_attr = {
             "task_id": ctx.task_id,
+            "correlation_id": getattr(self, "_current_correlation_id", "") or "",
             "tenant_id": ctx.tenant_id,
             "parent_principal": ctx.parent_principal,
             "delegated_by": ctx.delegated_by,
@@ -637,13 +658,19 @@ class ToolGatewayPEP:
         opener = urllib.request.build_opener(
             GovernedRedirectHandler(p_cfg, profile_name)
         )
-        with opener.open(req, timeout=5.0) as resp:
-            content = resp.read().decode("utf-8", errors="replace")
-            return {
-                "url": target_url,
-                "status_code": resp.status,
-                "content": content,
-            }
+        try:
+            with opener.open(req, timeout=5.0) as resp:
+                content = resp.read().decode("utf-8", errors="replace")
+                status_code = resp.status
+        except urllib.error.HTTPError as e:
+            content = e.read().decode("utf-8", errors="replace")
+            status_code = e.code
+
+        return {
+            "url": target_url,
+            "status_code": status_code,
+            "content": content,
+        }
 
     def _execute_browser_navigate(
         self,
@@ -665,18 +692,24 @@ class ToolGatewayPEP:
         opener = urllib.request.build_opener(
             GovernedRedirectHandler(p_cfg, profile_name)
         )
-        with opener.open(req, timeout=5.0) as resp:
-            html_text = resp.read().decode("utf-8", errors="replace")
-            parser = _SimpleTitleH1Parser()
-            parser.feed(html_text)
+        try:
+            with opener.open(req, timeout=5.0) as resp:
+                html_text = resp.read().decode("utf-8", errors="replace")
+                status_code = resp.status
+        except urllib.error.HTTPError as e:
+            html_text = e.read().decode("utf-8", errors="replace")
+            status_code = e.code
 
-            return {
-                "status": "COMPLETED",
-                "url": target_url,
-                "title": parser.title or "No Title Found",
-                "h1": parser.h1 or "",
-                "status_code": resp.status,
-            }
+        parser = _SimpleTitleH1Parser()
+        parser.feed(html_text)
+
+        return {
+            "status": "COMPLETED",
+            "url": target_url,
+            "title": parser.title or "No Title Found",
+            "h1": parser.h1 or "",
+            "status_code": status_code,
+        }
 
     def _execute_filesystem_read(self, norm_data: Dict[str, Any], args: Dict[str, Any]) -> Dict[str, Any]:
         """Read content from the strictly contained canonical path."""

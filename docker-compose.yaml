@@ -1,6 +1,6 @@
 services:
   cerbos:
-    image: ghcr.io/cerbos/cerbos:latest
+    image: ghcr.io/cerbos/cerbos:0.56.0@sha256:540643bc67ba628011a150ad1d3370f285daa38995be5cd7a4be181da902bec1
     container_name: cerbos-pdp
     restart: unless-stopped
     ports:
@@ -22,5 +22,6 @@ services:
     restart: unless-stopped
     ports:
       - "8089:8089"
-    command: >
-      sh -c "mkdir -p /www && echo '<!DOCTYPE html><html><head><title>Example Domain</title></head><body><h1>Example Domain</h1><p>Test page for browser agent verification.</p></body></html>' > /www/index.html && python3 -m http.server 8089 --directory /www"
+    volumes:
+      - ./mock:/mock:ro
+    command: ["python3", "/mock/server.py"]

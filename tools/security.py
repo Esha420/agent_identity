@@ -16,6 +16,11 @@ from tools.schema import TaskExecutionContext
 METADATA_IPS = {"169.254.169.254"}
 METADATA_HOSTS = {"metadata.google.internal", "metadata.azure.com", "instance-data"}
 
+# Authoritative internal cluster and synthetic target mappings
+HOST_RESOLVER_MAPPINGS: Dict[str, str] = {
+    "mock-target": os.environ.get("MOCK_TARGET_HOST_IP", "127.0.0.1"),
+}
+
 
 class SecurityValidationError(ValueError):
     """Raised when an argument fails security pre-validation or containment checks."""
@@ -98,9 +103,10 @@ def normalize_and_validate_url(
     # 5. DNS resolution & IP validation (A and AAAA records)
     allow_private_ips = tool_profile.get("allow_private_ips", False)
     resolved_ips = []
+    lookup_host = HOST_RESOLVER_MAPPINGS.get(norm_host, norm_host)
     try:
         # Resolve both IPv4 and IPv6 addresses
-        addr_info = socket.getaddrinfo(norm_host, port, family=socket.AF_UNSPEC, proto=socket.IPPROTO_TCP)
+        addr_info = socket.getaddrinfo(lookup_host, port, family=socket.AF_UNSPEC, proto=socket.IPPROTO_TCP)
         for item in addr_info:
             sockaddr = item[4]
             ip_str = sockaddr[0]

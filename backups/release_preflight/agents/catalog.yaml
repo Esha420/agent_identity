@@ -1,0 +1,134 @@
+# Declarative Agent Catalog
+# Defines external agent images, capabilities, execution parameters, and tool capability gates
+
+agents:
+  browser-agent:
+    name: "browser-agent"
+    role: "browser-worker"
+    description: "Upstream Browser Automation Agent navigating web pages and extracting structured DOM content"
+    source:
+      repository: "https://github.com/EmergenceAI/Agent-E"
+      category: "Browser"
+    runtime:
+      type: "substrate-container"
+      image: "localhost:5001/browser-agent@sha256:8abae590b3dcf422089e17b4219c0c7136fd84384ea228af1e66381d5ced4f8f"
+      command:
+        - "python3"
+        - "/agent/browser_cli.py"
+      default_args:
+        - "--url"
+        - "http://mock-target:8089"
+    capabilities:
+      - "browser"
+      - "web"
+      - "dom-extraction"
+    allowed_tools:
+      - "fetch_url"
+      - "browser_navigate"
+      - "filesystem_read"
+      - "filesystem_write"
+
+  research-agent:
+    name: "research-agent"
+    role: "research-worker"
+    description: "Upstream OpenClaw Autonomous Research Agent executing research tooling pipeline"
+    source:
+      repository: "https://github.com/openclaw/openclaw"
+      category: "Research"
+    runtime:
+      type: "substrate-container"
+      image: "localhost:5001/openclaw-agent@sha256:3a00eb8df2f127b46e926dcea420ade1d46f8723b0ec7abb4b3610637569f7d9"
+      command:
+        - "python3"
+        - "-c"
+        - "import json, os; print('[*] Research Agent completed topic research.'); res={'status':'COMPLETED','intel':'autonomous-agent-architecture'}; print(json.dumps(res))"
+    capabilities:
+      - "research"
+      - "analysis"
+      - "intel-gathering"
+    allowed_tools:
+      - "fetch_url"
+      - "filesystem_read"
+      - "filesystem_write"
+
+  restricted-agent:
+    name: "restricted-agent"
+    role: "restricted-worker"
+    description: "Sensitive/Restricted Internal Agent requiring explicit administrative policy authorization"
+    source:
+      repository: "internal/restricted"
+      category: "Restricted"
+    runtime:
+      type: "substrate-container"
+      image: "localhost:5001/openclaw-agent@sha256:3a00eb8df2f127b46e926dcea420ade1d46f8723b0ec7abb4b3610637569f7d9"
+      command:
+        - "/bin/echo"
+        - "RESTRICTED EXECUTION"
+    capabilities:
+      - "privileged-access"
+      - "security-override"
+    allowed_tools: []
+
+  website-investigation-agent:
+    name: "website-investigation-agent"
+    role: "browser-worker"
+    description: "Investigates staging website availability, HTTP status, and DOM error state"
+    source:
+      repository: "https://github.com/EmergenceAI/Agent-E"
+      category: "Browser"
+    runtime:
+      type: "substrate-container"
+      image: "localhost:5001/browser-agent@sha256:8abae590b3dcf422089e17b4219c0c7136fd84384ea228af1e66381d5ced4f8f"
+      command:
+        - "python3"
+        - "/agent/browser_cli.py"
+      default_args:
+        - "--url"
+        - "http://mock-target:8089/staging-error"
+        - "--goal"
+        - "Inspect staging website errors"
+    capabilities:
+      - "browser"
+      - "web-inspection"
+    allowed_tools:
+      - "browser_navigate"
+
+  log-analysis-agent:
+    name: "log-analysis-agent"
+    role: "monitoring-worker"
+    description: "Inspects application staging logs to identify stack traces and error signatures"
+    source:
+      repository: "https://github.com/openclaw/openclaw"
+      category: "Operations"
+    runtime:
+      type: "substrate-container"
+      image: "localhost:5001/openclaw-agent@sha256:3a00eb8df2f127b46e926dcea420ade1d46f8723b0ec7abb4b3610637569f7d9"
+      command:
+        - "/bin/bash"
+        - "/agent/run_workload.sh"
+    capabilities:
+      - "monitoring"
+      - "log-analysis"
+    allowed_tools:
+      - "filesystem_read"
+
+  incident-reporting-agent:
+    name: "incident-reporting-agent"
+    role: "document-worker"
+    description: "Synthesizes diagnostic findings and compiles the official incident report"
+    source:
+      repository: "https://github.com/openclaw/openclaw"
+      category: "Reporting"
+    runtime:
+      type: "substrate-container"
+      image: "localhost:5001/openclaw-agent@sha256:3a00eb8df2f127b46e926dcea420ade1d46f8723b0ec7abb4b3610637569f7d9"
+      command:
+        - "/bin/bash"
+        - "/agent/run_workload.sh"
+    capabilities:
+      - "document"
+      - "reporting"
+    allowed_tools:
+      - "filesystem_read"
+      - "filesystem_write"
+

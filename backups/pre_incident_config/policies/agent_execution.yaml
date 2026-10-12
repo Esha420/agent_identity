@@ -1,0 +1,31 @@
+---
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  version: "default"
+  resource: "agent"
+  rules:
+    - actions: ["execute"]
+      effect: EFFECT_ALLOW
+      roles:
+        - orchestrator
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.resource.id in ["browser-agent", "research-agent"]
+              - expr: "has(request.resource.attr.user) ? request.resource.attr.user.id != '' : true"
+              - expr: "has(request.resource.attr.user) ? 'agent:execute' in request.resource.attr.user.permissions : true"
+              - expr: "has(request.resource.attr.user) && has(request.principal.attr.tenant_id) ? request.resource.attr.user.tenant_id == request.principal.attr.tenant_id : true"
+              - expr: "has(request.resource.attr.tenant_id) && has(request.principal.attr.tenant_id) ? request.resource.attr.tenant_id == request.principal.attr.tenant_id : true"
+
+    - actions: ["execute"]
+      effect: EFFECT_DENY
+      roles:
+        - orchestrator
+      condition:
+        match:
+          expr: request.resource.id == "restricted-agent"
+
+    - actions: ["admin", "delete"]
+      effect: EFFECT_DENY
+      roles: ["*"]

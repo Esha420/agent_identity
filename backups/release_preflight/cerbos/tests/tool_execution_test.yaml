@@ -1,0 +1,486 @@
+---
+name: ToolExecutionTestSuite
+description: Verification tests for runtime tool execution policies
+principals:
+  browser_worker:
+    id: browser-agent
+    roles:
+      - browser-worker
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      parent_principal: orchestrator-agent
+      delegated_by: user-123
+      delegation_permissions:
+        - browser:read
+        - network:read
+        - filesystem:read
+        - filesystem:write
+
+  browser_worker_missing_permissions:
+    id: browser-agent
+    roles:
+      - browser-worker
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      parent_principal: orchestrator-agent
+      delegated_by: user-123
+      delegation_permissions: []
+
+  untrusted_worker:
+    id: untrusted-agent
+    roles:
+      - untrusted
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      parent_principal: orchestrator-agent
+      delegated_by: user-123
+
+  monitoring_worker:
+    id: log-analysis-agent
+    roles:
+      - monitoring-worker
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      parent_principal: orchestrator-agent
+      delegated_by: user-123
+      delegation_permissions:
+        - filesystem:read
+
+  document_worker:
+    id: incident-reporting-agent
+    roles:
+      - document-worker
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      parent_principal: orchestrator-agent
+      delegated_by: user-123
+      delegation_permissions:
+        - filesystem:read
+        - filesystem:write
+
+resources:
+  fetch_url_valid:
+    id: fetch_url
+    kind: tool
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      delegated_by: user-123
+      allowed_methods:
+        - GET
+      allowed_hosts:
+        - example.com
+        - docs.example.com
+      allowed_schemes:
+        - https
+      allowed_ports:
+        - 443
+      method: GET
+      host: example.com
+      scheme: https
+      port: 443
+      ip_valid: true
+
+  fetch_url_invalid_method:
+    id: fetch_url
+    kind: tool
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      delegated_by: user-123
+      allowed_methods:
+        - GET
+      allowed_hosts:
+        - example.com
+      allowed_schemes:
+        - https
+      allowed_ports:
+        - 443
+      method: POST
+      host: example.com
+      scheme: https
+      port: 443
+      ip_valid: true
+
+  fetch_url_invalid_host:
+    id: fetch_url
+    kind: tool
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      delegated_by: user-123
+      allowed_methods:
+        - GET
+      allowed_hosts:
+        - example.com
+      allowed_schemes:
+        - https
+      allowed_ports:
+        - 443
+      method: GET
+      host: attacker.com
+      scheme: https
+      port: 443
+      ip_valid: true
+
+  fetch_url_mismatched_task:
+    id: fetch_url
+    kind: tool
+    attr:
+      task_id: forged-task-999
+      tenant_id: tenant-demo
+      delegated_by: user-123
+      allowed_methods:
+        - GET
+      allowed_hosts:
+        - example.com
+      allowed_schemes:
+        - https
+      allowed_ports:
+        - 443
+      method: GET
+      host: example.com
+      scheme: https
+      port: 443
+      ip_valid: true
+
+  filesystem_read_valid:
+    id: filesystem_read
+    kind: tool
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      delegated_by: user-123
+      path_contained: true
+
+  filesystem_read_uncontained:
+    id: filesystem_read
+    kind: tool
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      delegated_by: user-123
+      path_contained: false
+
+  fetch_url_mismatched_tenant:
+    id: fetch_url
+    kind: tool
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-other
+      delegated_by: user-123
+      allowed_methods:
+        - GET
+      allowed_hosts:
+        - example.com
+      allowed_schemes:
+        - https
+      allowed_ports:
+        - 443
+      method: GET
+      host: example.com
+      scheme: https
+      port: 443
+      ip_valid: true
+
+  fetch_url_mismatched_delegated_by:
+    id: fetch_url
+    kind: tool
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      delegated_by: user-other
+      allowed_methods:
+        - GET
+      allowed_hosts:
+        - example.com
+      allowed_schemes:
+        - https
+      allowed_ports:
+        - 443
+      method: GET
+      host: example.com
+      scheme: https
+      port: 443
+      ip_valid: true
+
+  log_file_resource:
+    id: filesystem_read
+    kind: tool
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      delegated_by: user-123
+      path_contained: true
+      canonical_path: /workspace/logs/sample_staging.log
+
+  log_write_resource:
+    id: filesystem_write
+    kind: tool
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      delegated_by: user-123
+      path_contained: true
+      canonical_path: /workspace/logs/sample_staging.log
+
+  findings_resource:
+    id: filesystem_read
+    kind: tool
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      delegated_by: user-123
+      path_contained: true
+      canonical_path: /workspace/output/findings_incident.json
+
+  incident_report_resource:
+    id: filesystem_write
+    kind: tool
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      delegated_by: user-123
+      path_contained: true
+      canonical_path: /workspace/output/incident_report.md
+
+  unauthorized_write_resource:
+    id: filesystem_write
+    kind: tool
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      delegated_by: user-123
+      path_contained: true
+      canonical_path: /workspace/output/malicious_payload.sh
+
+tests:
+  - name: ValidFetchUrlAllowed
+    input:
+      principals:
+        - browser_worker
+      resources:
+        - fetch_url_valid
+      actions:
+        - request
+    expected:
+      - principal: browser_worker
+        resource: fetch_url_valid
+        actions:
+          request: EFFECT_ALLOW
+
+  - name: MethodNotAllowedDenied
+    input:
+      principals:
+        - browser_worker
+      resources:
+        - fetch_url_invalid_method
+      actions:
+        - request
+    expected:
+      - principal: browser_worker
+        resource: fetch_url_invalid_method
+        actions:
+          request: EFFECT_DENY
+
+  - name: HostNotAllowedDenied
+    input:
+      principals:
+        - browser_worker
+      resources:
+        - fetch_url_invalid_host
+      actions:
+        - request
+    expected:
+      - principal: browser_worker
+        resource: fetch_url_invalid_host
+        actions:
+          request: EFFECT_DENY
+
+  - name: TaskIdMismatchDenied
+    input:
+      principals:
+        - browser_worker
+      resources:
+        - fetch_url_mismatched_task
+      actions:
+        - request
+    expected:
+      - principal: browser_worker
+        resource: fetch_url_mismatched_task
+        actions:
+          request: EFFECT_DENY
+
+  - name: ContainedFilesystemReadAllowed
+    input:
+      principals:
+        - browser_worker
+      resources:
+        - filesystem_read_valid
+      actions:
+        - read
+    expected:
+      - principal: browser_worker
+        resource: filesystem_read_valid
+        actions:
+          read: EFFECT_ALLOW
+
+  - name: UncontainedFilesystemReadDenied
+    input:
+      principals:
+        - browser_worker
+      resources:
+        - filesystem_read_uncontained
+      actions:
+        - read
+    expected:
+      - principal: browser_worker
+        resource: filesystem_read_uncontained
+        actions:
+          read: EFFECT_DENY
+
+  - name: UntrustedRoleDenied
+    input:
+      principals:
+        - untrusted_worker
+      resources:
+        - fetch_url_valid
+      actions:
+        - request
+    expected:
+      - principal: untrusted_worker
+        resource: fetch_url_valid
+        actions:
+          request: EFFECT_DENY
+
+  - name: TenantMismatchDenied
+    input:
+      principals:
+        - browser_worker
+      resources:
+        - fetch_url_mismatched_tenant
+      actions:
+        - request
+    expected:
+      - principal: browser_worker
+        resource: fetch_url_mismatched_tenant
+        actions:
+          request: EFFECT_DENY
+
+  - name: DelegatedUserMismatchDenied
+    input:
+      principals:
+        - browser_worker
+      resources:
+        - fetch_url_mismatched_delegated_by
+      actions:
+        - request
+    expected:
+      - principal: browser_worker
+        resource: fetch_url_mismatched_delegated_by
+        actions:
+          request: EFFECT_DENY
+
+  - name: MissingDelegationPermissionsDenied
+    input:
+      principals:
+        - browser_worker_missing_permissions
+      resources:
+        - fetch_url_valid
+      actions:
+        - request
+    expected:
+      - principal: browser_worker_missing_permissions
+        resource: fetch_url_valid
+        actions:
+          request: EFFECT_DENY
+
+  - name: MonitoringWorkerLogReadAllowed
+    input:
+      principals:
+        - monitoring_worker
+      resources:
+        - log_file_resource
+      actions:
+        - read
+    expected:
+      - principal: monitoring_worker
+        resource: log_file_resource
+        actions:
+          read: EFFECT_ALLOW
+
+  - name: MonitoringWorkerLogWriteDenied
+    input:
+      principals:
+        - monitoring_worker
+      resources:
+        - log_write_resource
+      actions:
+        - write
+    expected:
+      - principal: monitoring_worker
+        resource: log_write_resource
+        actions:
+          write: EFFECT_DENY
+
+  - name: DocumentWorkerFindingsReadAllowed
+    input:
+      principals:
+        - document_worker
+      resources:
+        - findings_resource
+      actions:
+        - read
+    expected:
+      - principal: document_worker
+        resource: findings_resource
+        actions:
+          read: EFFECT_ALLOW
+
+  - name: DocumentWorkerLogReadDenied
+    input:
+      principals:
+        - document_worker
+      resources:
+        - log_file_resource
+      actions:
+        - read
+    expected:
+      - principal: document_worker
+        resource: log_file_resource
+        actions:
+          read: EFFECT_DENY
+
+  - name: DocumentWorkerReportWriteAllowed
+    input:
+      principals:
+        - document_worker
+      resources:
+        - incident_report_resource
+      actions:
+        - write
+    expected:
+      - principal: document_worker
+        resource: incident_report_resource
+        actions:
+          write: EFFECT_ALLOW
+
+  - name: DocumentWorkerArbitraryWriteDenied
+    input:
+      principals:
+        - document_worker
+      resources:
+        - unauthorized_write_resource
+      actions:
+        - write
+    expected:
+      - principal: document_worker
+        resource: unauthorized_write_resource
+        actions:
+          write: EFFECT_DENY
+

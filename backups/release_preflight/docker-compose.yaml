@@ -1,0 +1,27 @@
+services:
+  cerbos:
+    image: ghcr.io/cerbos/cerbos:0.56.0@sha256:540643bc67ba628011a150ad1d3370f285daa38995be5cd7a4be181da902bec1
+    container_name: cerbos-pdp
+    restart: unless-stopped
+    ports:
+      - "3592:3592"
+      - "3593:3593"
+    volumes:
+      - ./cerbos/cerbos.yaml:/cerbos.yaml:ro
+      - ./cerbos/policies:/policies:ro
+    command: ["server", "--config=/cerbos.yaml"]
+    healthcheck:
+      test: ["CMD", "/cerbos", "healthcheck", "--config=/cerbos.yaml"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  mock-target:
+    image: python:3.11-alpine
+    container_name: mock-target
+    restart: unless-stopped
+    ports:
+      - "8089:8089"
+    volumes:
+      - ./mock:/mock:ro
+    command: ["python3", "/mock/server.py"]

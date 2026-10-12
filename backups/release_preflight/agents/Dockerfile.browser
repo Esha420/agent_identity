@@ -1,0 +1,20 @@
+# Browser Agent Image for Substrate Execution
+# Packaging upstream browser automation CLI with ax-task-runner
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir httpx beautifulsoup4
+
+# Upstream browser execution CLI script
+RUN mkdir -p /agent /workspace
+COPY agents/browser_cli.py /agent/browser_cli.py
+
+# Include native AX Task Runner from local registry image
+COPY --from=localhost:5001/ax-task-runner:latest /usr/local/bin/ax-task-runner /usr/local/bin/ax-task-runner
+
+WORKDIR /workspace
+ENTRYPOINT ["/usr/local/bin/ax-task-runner"]

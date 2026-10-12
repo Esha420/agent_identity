@@ -1,0 +1,22 @@
+{
+  "release_timestamp": "20261012T084103Z",
+  "status": "APPROVED_FOR_PRODUCTION",
+  "cerbos": {
+    "version": "0.56.0",
+    "image": "ghcr.io/cerbos/cerbos:0.56.0@sha256:540643bc67ba628011a150ad1d3370f285daa38995be5cd7a4be181da902bec1",
+    "policy_tests": "26/26 OK"
+  },
+  "workloads": {
+    "openclaw_agent": "localhost:5001/openclaw-agent@sha256:3a00eb8df2f127b46e926dcea420ade1d46f8723b0ec7abb4b3610637569f7d9",
+    "browser_agent": "localhost:5001/browser-agent@sha256:8abae590b3dcf422089e17b4219c0c7136fd84384ea228af1e66381d5ced4f8f"
+  },
+  "security_boundaries": {
+    "canonical_target_verified": "mock-target:8089",
+    "localhost_bypass_prevented": true,
+    "cloud_metadata_ssrf_blocked": true,
+    "slack_channel_boundary_enforced": true,
+    "slack_operator_rbac_enforced": true,
+    "audit_event_correlation_verified": true,
+    "zero_side_effect_on_denial": true
+  }
+}

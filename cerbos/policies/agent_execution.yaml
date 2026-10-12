@@ -12,7 +12,7 @@ resourcePolicy:
         match:
           all:
             of:
-              - expr: request.resource.id in ["browser-agent", "research-agent"]
+              - expr: request.resource.id in ["browser-agent", "research-agent", "website-investigation-agent", "log-analysis-agent", "incident-reporting-agent"]
               - expr: "has(request.resource.attr.user) ? request.resource.attr.user.id != '' : true"
               - expr: "has(request.resource.attr.user) ? 'agent:execute' in request.resource.attr.user.permissions : true"
               - expr: "has(request.resource.attr.user) && has(request.principal.attr.tenant_id) ? request.resource.attr.user.tenant_id == request.principal.attr.tenant_id : true"

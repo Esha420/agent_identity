@@ -22,6 +22,17 @@ tools:
         allowed_methods:
           - "GET"
         allow_private_ips: true
+      staging:
+        allowed_schemes:
+          - "http"
+          - "https"
+        allowed_hosts:
+          - "mock-target"
+        allowed_ports:
+          - 8089
+        allowed_methods:
+          - "GET"
+        allow_private_ips: true
       production:
         allowed_schemes:
           - "https"
@@ -52,6 +63,15 @@ tools:
         allowed_ports:
           - 8089
         allow_private_ips: true
+      staging:
+        allowed_schemes:
+          - "http"
+          - "https"
+        allowed_hosts:
+          - "mock-target"
+        allowed_ports:
+          - 8089
+        allow_private_ips: true
       production:
         allowed_schemes:
           - "https"
@@ -71,8 +91,10 @@ tools:
     allowed_path_roots:
       - "/workspace/input"
       - "/workspace/output"
+      - "/workspace/logs"
       - "./workspace/input"
       - "./workspace/output"
+      - "./workspace/logs"
 
   filesystem_write:
     name: "filesystem_write"
