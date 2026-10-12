@@ -28,6 +28,10 @@ TRUSTED_WORKLOADS: Dict[str, Dict[str, Any]] = {
         "roles": ["orchestrator"],
         "tenant_id": "tenant-demo",
         "allowed_delegates": ["user-123", "user-admin"],
+        "default_permissions": {
+            "user-123": ["agent:execute", "browser:read", "network:read", "filesystem:read", "filesystem:write"],
+            "user-admin": ["agent:execute", "browser:read", "network:read", "filesystem:read", "filesystem:write"],
+        },
     }
 }
 
@@ -66,6 +70,9 @@ class AXAdmissionAdapter:
         agent_result: Any,
         status: str,
         cerbos_decision: str = "DENIED_BY_PEP",
+        scope: Optional[str] = None,
+        policy_boundary: Optional[str] = None,
+        denial_reason: Optional[str] = None,
     ) -> Dict[str, Any]:
         return {
             "request_id": req_id,
@@ -79,6 +86,9 @@ class AXAdmissionAdapter:
             "substrate_workload": substrate_workload,
             "agent_result": agent_result,
             "status": status,
+            "scope": scope,
+            "policy_boundary": policy_boundary,
+            "denial_reason": denial_reason or (agent_result if status == "DENIED" else None),
         }
 
     def mint_task_context(
@@ -220,7 +230,10 @@ class AXAdmissionAdapter:
                     req_id, principal, verified_roles, agent_name, action, context,
                     "REJECTED_PEP", "NO WORKLOAD CREATED",
                     f"Caller supplied forged delegated_by '{caller_claimed_user}' differing from verified Auth0 subject '{verified_user_id}'",
-                    "DENIED"
+                    "DENIED",
+                    scope=f"Identity Boundary: claimed='{caller_claimed_user}' vs token subject='{verified_user_id}'",
+                    policy_boundary="Delegation Anti-Tampering Boundary",
+                    denial_reason="Caller claimed delegated_by identity differs from cryptographically verified Auth0 subject",
                 )
                 self._print_trace(trace)
                 return trace
@@ -232,7 +245,10 @@ class AXAdmissionAdapter:
                     req_id, principal, verified_roles, agent_name, action, context,
                     "REJECTED_PEP", "NO WORKLOAD CREATED",
                     f"Caller supplied forged tenant '{caller_claimed_tenant}' differing from verified Auth0 tenant '{verified_user_tenant}'",
-                    "DENIED"
+                    "DENIED",
+                    scope=f"Multi-Tenant Boundary: claimed='{caller_claimed_tenant}' vs token org_id='{verified_user_tenant}'",
+                    policy_boundary="Multi-Tenant Isolation Boundary",
+                    denial_reason="Caller claimed tenant differs from cryptographically verified Auth0 organization",
                 )
                 self._print_trace(trace)
                 return trace
@@ -243,7 +259,10 @@ class AXAdmissionAdapter:
                     req_id, principal, verified_roles, agent_name, action, context,
                     "REJECTED_PEP", "NO WORKLOAD CREATED",
                     f"Orchestrator workload tenant '{verified_workload_tenant}' does not match Auth0 user tenant '{verified_user_tenant}'",
-                    "DENIED"
+                    "DENIED",
+                    scope=f"Cross-Tenant Boundary: orchestrator tenant='{verified_workload_tenant}' vs user tenant='{verified_user_tenant}'",
+                    policy_boundary="Cross-Tenant Workload Boundary",
+                    denial_reason="Orchestrator workload tenant cannot cross-execute for user in different tenant",
                 )
                 self._print_trace(trace)
                 return trace
@@ -267,22 +286,45 @@ class AXAdmissionAdapter:
                         req_id, principal, roles, agent_name, action, context,
                         "REJECTED_PEP", "NO WORKLOAD CREATED",
                         f"Orchestrator workload '{principal}' cannot operate across unauthorized tenant '{req_tenant}'",
-                        "DENIED"
+                        "DENIED",
+                        scope=f"Tenant Boundary: requested tenant '{req_tenant}' != workload authorized tenant '{verified_workload_tenant}'",
+                        policy_boundary="Multi-Tenant Isolation Boundary",
+                        denial_reason=f"Workload '{principal}' is not authorized to execute tasks across tenant '{req_tenant}'",
                     )
                     self._print_trace(trace)
                     return trace
 
                 delegated_by = context.get("delegated_by", "user-123")
+                # Caller cannot assert an Auth0 user identity without a cryptographically verified token
+                if delegated_by.startswith("auth0|"):
+                    trace = self._build_trace(
+                        req_id, principal, roles, agent_name, action, context,
+                        "REJECTED_PEP", "NO WORKLOAD CREATED",
+                        f"Claimed Auth0 user '{delegated_by}' requires a cryptographically verified user_token",
+                        "DENIED",
+                        scope=f"Identity Boundary: delegated_by='{delegated_by}' (missing verified Auth0 OIDC JWT token)",
+                        policy_boundary="Identity Delegation & Anti-Spoofing Boundary",
+                        denial_reason="Asserting an Auth0 subject identity requires a cryptographically verified RS256 token",
+                    )
+                    self._print_trace(trace)
+                    return trace
+
                 if delegated_by not in TRUSTED_WORKLOADS[principal]["allowed_delegates"]:
                     trace = self._build_trace(
                         req_id, principal, roles, agent_name, action, context,
                         "REJECTED_PEP", "NO WORKLOAD CREATED",
                         f"Orchestrator workload '{principal}' supplied unauthorized/forged delegation: '{delegated_by}'",
-                        "DENIED"
+                        "DENIED",
+                        scope=f"Delegate Trust Pool: '{delegated_by}' not in allowed delegates {TRUSTED_WORKLOADS[principal]['allowed_delegates']}",
+                        policy_boundary="Delegate Trust Pool Boundary",
+                        denial_reason=f"Delegate identity '{delegated_by}' is not in approved trust pool for workload",
                     )
                     self._print_trace(trace)
                     return trace
                 verified_tenant = verified_workload_tenant
+                delegation_permissions = TRUSTED_WORKLOADS[principal].get("default_permissions", {}).get(
+                    delegated_by, ["agent:execute", "browser:read", "network:read", "filesystem:read", "filesystem:write"]
+                )
             else:
                 verified_tenant = req_tenant or "untrusted"
                 delegated_by = context.get("delegated_by", "unknown")
@@ -295,7 +337,10 @@ class AXAdmissionAdapter:
                 req_id, principal, verified_roles, agent_name, action, context,
                 "REJECTED_UNKNOWN_AGENT", "NO WORKLOAD CREATED",
                 f"Agent '{agent_name}' not found in catalog",
-                "FAILED"
+                "FAILED",
+                scope=f"Agent Catalog: '{agent_name}'",
+                policy_boundary="Declarative Agent Catalog",
+                denial_reason=f"Target agent '{agent_name}' is not registered in declarative catalog",
             )
             self._print_trace(trace)
             return trace
@@ -311,7 +356,10 @@ class AXAdmissionAdapter:
                 req_id, principal, verified_roles, agent_name, action, context,
                 "REJECTED_IMAGE_MISMATCH", "NO WORKLOAD CREATED",
                 f"Requested task image '{task_data['image']}' differs from trusted catalog digest '{catalog_image}'",
-                "FAILED"
+                "FAILED",
+                scope=f"Image Digest: requested='{task_data['image']}' vs catalog='{catalog_image}'",
+                policy_boundary="Workload Cryptographic Digest Boundary",
+                denial_reason="Tampering detected: task container image digest does not match catalog",
             )
             self._print_trace(trace)
             return trace
@@ -347,6 +395,7 @@ class AXAdmissionAdapter:
             resource_attr=resource_attr,
         )
 
+        caps = agent_meta.get("capabilities", [])
         trace = {
             "request_id": req_id,
             "principal": principal,
@@ -359,6 +408,8 @@ class AXAdmissionAdapter:
             "substrate_workload": "NONE",
             "agent_result": None,
             "status": "UNKNOWN",
+            "scope": f"Agent: '{agent_name}' (capabilities: {caps}) | Tenant: '{verified_tenant}' | Delegate: '{delegated_by}'",
+            "policy_boundary": "Cerbos Agent Execution Policy (agent_execution.yaml)",
         }
 
         if not allowed or decision != "ALLOW":
@@ -366,6 +417,11 @@ class AXAdmissionAdapter:
             trace["substrate_workload"] = "NO WORKLOAD CREATED"
             trace["agent_result"] = f"Authorization denied by policy: {decision}"
             trace["status"] = "DENIED"
+            if agent_name == "restricted-agent":
+                trace["scope"] = f"Agent: 'restricted-agent' (capabilities: {caps}) -> Restricted rule: expr: request.resource.id == 'restricted-agent'"
+                trace["denial_reason"] = "Role 'orchestrator' is prohibited from executing privileged/restricted agents without explicit administrative override"
+            else:
+                trace["denial_reason"] = f"Cerbos PDP evaluated policy rules and returned {decision}"
             self._print_trace(trace)
             return trace
 
@@ -412,6 +468,7 @@ class AXAdmissionAdapter:
             # ---------------------------------------------------------
             trace["ax_decision"] = "ACCEPTED"
             trace["substrate_workload"] = f"created:{task_name}"
+            trace["scope"] = f"Permissions: {delegation_permissions} | Tenant: '{verified_tenant}' | Delegate: '{delegated_by}'"
 
             # ---------------------------------------------------------
             # Step 7: Mint Signed TaskExecutionContext (Only After AX Acceptance)
@@ -478,10 +535,18 @@ class AXAdmissionAdapter:
         print(f"Principal:        {t['principal']} (roles: {t.get('roles', [])})")
         print(f"Target Agent:     {t['agent']}")
         print(f"Action:           {t['action']}")
+        if t.get("scope"):
+            print(f"Evaluated Scope:  {t['scope']}")
+        if t.get("policy_boundary"):
+            print(f"Policy Boundary:  {t['policy_boundary']}")
         print(f"Cerbos Decision:  {t['cerbos_decision']}")
         print(f"AX Decision:      {t['ax_decision']}")
         print(f"Substrate State:  {t['substrate_workload']}")
         print(f"Execution Status: {t['status']}")
+        if t.get("denial_reason"):
+            print(f"Denial Reason:    {t['denial_reason']}")
+        elif t.get("status") == "DENIED":
+            print(f"Denial Reason:    {t.get('agent_result')}")
         print(f"Result:           {json.dumps(t['agent_result'])}")
         print(sep)
 

@@ -24,7 +24,8 @@ PYTHONPATH=. python3 -m unittest \
   tests/test_identity_provenance.py \
   tests/test_tool_authorization.py \
   tests/test_tool_gateway.py \
-  tests/test_tool_policy_dynamic_switch.py
+  tests/test_tool_policy_dynamic_switch.py \
+  tests/test_complete_authorization_enforcement.py
 
 # 3. Check for native AX/Substrate cluster connectivity
 echo "[Step 3/3] Checking native AX control plane status for workload materialization..."

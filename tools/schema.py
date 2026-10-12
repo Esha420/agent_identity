@@ -28,7 +28,7 @@ class TaskExecutionContext:
     parent_principal: str = "orchestrator-agent"
     delegated_by: str = "user-123"
     delegation_issuer: str = "https://your-tenant.us.auth0.com/"
-    delegation_permissions: List[str] = field(default_factory=list)
+    delegation_permissions: Optional[List[str]] = None
     agent_image_digest: str = "sha256:8abae590b3dcf422089e17b4219c0c7136fd84384ea228af1e66381d5ced4f8f"
     environment: str = "test"  # "test" | "production"
     policy_scope: str = "default"
@@ -41,6 +41,13 @@ class TaskExecutionContext:
     expires_at: int = field(default_factory=lambda: int(time.time()) + 3600)
     context_id: str = field(default_factory=lambda: f"ctx-{uuid.uuid4().hex[:12]}")
     signature: str = ""
+
+    def __post_init__(self):
+        if self.delegation_permissions is None:
+            if self.delegated_by in ["user-123", "user-admin"]:
+                object.__setattr__(self, "delegation_permissions", ["browser:read", "network:read", "filesystem:read", "filesystem:write"])
+            else:
+                object.__setattr__(self, "delegation_permissions", [])
 
     def _canonical_payload(self) -> bytes:
         """Create canonical representation of signed fields for HMAC signing."""

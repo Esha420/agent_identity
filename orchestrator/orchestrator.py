@@ -53,6 +53,8 @@ class OrchestratorAgent:
         prompt: str,
         target_agent: Optional[str] = None,
         action: str = "execute",
+        user_token: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         print(f"\n[ORCHESTRATOR] Received User Task: '{prompt}'")
 
@@ -65,13 +67,17 @@ class OrchestratorAgent:
         print(f"[ORCHESTRATOR] Plan: 1. Resolved agent '{selected_agent}'. 2. Request execution via AX.")
 
         # Step 2: Formulate generic execution request
+        ctx = {"environment": "lab", "source": "orchestrator"}
+        if context:
+            ctx.update(context)
+
         execution_request = {
             "principal": self.principal,
             "roles": self.roles,
             "agent": selected_agent,
             "action": action,
             "task": {"prompt": prompt},
-            "context": {"environment": "lab", "source": "orchestrator"},
+            "context": ctx,
         }
 
         # Step 3: Delegate to AX runtime boundary
@@ -83,6 +89,7 @@ class OrchestratorAgent:
             action=execution_request["action"],
             task_data=execution_request["task"],
             context=execution_request["context"],
+            user_token=user_token,
         )
 
         if trace["status"] == "COMPLETED":
@@ -99,10 +106,24 @@ def main():
     parser.add_argument("--principal", default="orchestrator-agent", help="Caller principal ID")
     parser.add_argument("--role", default="orchestrator", help="Caller role")
     parser.add_argument("--agent", default=None, help="Explicit target agent override")
+    parser.add_argument("--user-token", default=None, help="Auth0 OIDC user access token (JWT)")
+    parser.add_argument("--delegated-by", default=None, help="Caller asserted delegated user ID")
+    parser.add_argument("--tenant", default=None, help="Caller asserted tenant ID")
     args = parser.parse_args()
 
+    context = {}
+    if args.delegated_by:
+        context["delegated_by"] = args.delegated_by
+    if args.tenant:
+        context["tenant_id"] = args.tenant
+
     orchestrator = OrchestratorAgent(principal=args.principal, roles=[args.role])
-    orchestrator.execute_user_task(prompt=args.prompt, target_agent=args.agent)
+    orchestrator.execute_user_task(
+        prompt=args.prompt,
+        target_agent=args.agent,
+        user_token=args.user_token,
+        context=context or None,
+    )
 
 
 if __name__ == "__main__":

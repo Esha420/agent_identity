@@ -20,7 +20,7 @@ resourcePolicy:
               - expr: request.resource.attr.delegated_by == request.principal.attr.delegated_by
               - expr: request.principal.attr.tenant_id in ["tenant-demo"]
               - expr: "request.principal.attr.delegated_by in ['user-123', 'user-admin'] || request.principal.attr.delegated_by.startsWith('auth0|')"
-              - expr: "has(request.principal.attr.delegation_permissions) && size(request.principal.attr.delegation_permissions) > 0 ? ('browser:read' in request.principal.attr.delegation_permissions || 'network:read' in request.principal.attr.delegation_permissions) : true"
+              - expr: "request.principal.attr.delegated_by.startsWith('auth0|') ? (has(request.principal.attr.delegation_permissions) && ('browser:read' in request.principal.attr.delegation_permissions || 'network:read' in request.principal.attr.delegation_permissions)) : (has(request.principal.attr.delegation_permissions) ? ('browser:read' in request.principal.attr.delegation_permissions || 'network:read' in request.principal.attr.delegation_permissions) : true)"
               - expr: request.resource.attr.method in request.resource.attr.allowed_methods
               - expr: request.resource.attr.host in request.resource.attr.allowed_hosts
               - expr: request.resource.attr.scheme in request.resource.attr.allowed_schemes
@@ -42,7 +42,7 @@ resourcePolicy:
               - expr: request.resource.attr.delegated_by == request.principal.attr.delegated_by
               - expr: request.principal.attr.tenant_id in ["tenant-demo"]
               - expr: "request.principal.attr.delegated_by in ['user-123', 'user-admin'] || request.principal.attr.delegated_by.startsWith('auth0|')"
-              - expr: "has(request.principal.attr.delegation_permissions) && size(request.principal.attr.delegation_permissions) > 0 ? 'browser:read' in request.principal.attr.delegation_permissions : true"
+              - expr: "request.principal.attr.delegated_by.startsWith('auth0|') ? (has(request.principal.attr.delegation_permissions) && 'browser:read' in request.principal.attr.delegation_permissions) : (has(request.principal.attr.delegation_permissions) ? 'browser:read' in request.principal.attr.delegation_permissions : true)"
               - expr: request.resource.attr.host in request.resource.attr.allowed_hosts
               - expr: request.resource.attr.scheme in request.resource.attr.allowed_schemes
               - expr: request.resource.attr.ip_valid == true
@@ -63,7 +63,7 @@ resourcePolicy:
               - expr: request.resource.attr.delegated_by == request.principal.attr.delegated_by
               - expr: request.principal.attr.tenant_id in ["tenant-demo"]
               - expr: "request.principal.attr.delegated_by in ['user-123', 'user-admin'] || request.principal.attr.delegated_by.startsWith('auth0|')"
-              - expr: "has(request.principal.attr.delegation_permissions) && size(request.principal.attr.delegation_permissions) > 0 ? 'filesystem:read' in request.principal.attr.delegation_permissions : true"
+              - expr: "request.principal.attr.delegated_by.startsWith('auth0|') ? (has(request.principal.attr.delegation_permissions) && 'filesystem:read' in request.principal.attr.delegation_permissions) : (has(request.principal.attr.delegation_permissions) ? 'filesystem:read' in request.principal.attr.delegation_permissions : true)"
               - expr: request.resource.attr.path_contained == true
 
     # 4. ALLOW Filesystem Write for contained output paths
@@ -82,5 +82,5 @@ resourcePolicy:
               - expr: request.resource.attr.delegated_by == request.principal.attr.delegated_by
               - expr: request.principal.attr.tenant_id in ["tenant-demo"]
               - expr: "request.principal.attr.delegated_by in ['user-123', 'user-admin'] || request.principal.attr.delegated_by.startsWith('auth0|')"
-              - expr: "has(request.principal.attr.delegation_permissions) && size(request.principal.attr.delegation_permissions) > 0 ? 'filesystem:write' in request.principal.attr.delegation_permissions : true"
+              - expr: "request.principal.attr.delegated_by.startsWith('auth0|') ? (has(request.principal.attr.delegation_permissions) && 'filesystem:write' in request.principal.attr.delegation_permissions) : (has(request.principal.attr.delegation_permissions) ? 'filesystem:write' in request.principal.attr.delegation_permissions : true)"
               - expr: request.resource.attr.path_contained == true

@@ -11,6 +11,22 @@ principals:
       tenant_id: tenant-demo
       parent_principal: orchestrator-agent
       delegated_by: user-123
+      delegation_permissions:
+        - browser:read
+        - network:read
+        - filesystem:read
+        - filesystem:write
+
+  browser_worker_missing_permissions:
+    id: browser-agent
+    roles:
+      - browser-worker
+    attr:
+      task_id: task-test-001
+      tenant_id: tenant-demo
+      parent_principal: orchestrator-agent
+      delegated_by: user-123
+      delegation_permissions: []
 
   untrusted_worker:
     id: untrusted-agent
@@ -294,3 +310,18 @@ tests:
         resource: fetch_url_mismatched_delegated_by
         actions:
           request: EFFECT_DENY
+
+  - name: MissingDelegationPermissionsDenied
+    input:
+      principals:
+        - browser_worker_missing_permissions
+      resources:
+        - fetch_url_valid
+      actions:
+        - request
+    expected:
+      - principal: browser_worker_missing_permissions
+        resource: fetch_url_valid
+        actions:
+          request: EFFECT_DENY
+
